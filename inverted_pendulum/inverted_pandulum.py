@@ -83,7 +83,7 @@ for j in range(6):
         reward_mean_graph.append(m)
         last_x_position_graph.append(last_x_position)
         if last_x_position > 0.999 :
-            model.save_weights('pendulum_g1.h5')
+            model.save_weights('pendulum_g10.h5')
         print(f'episode : {i} reward_mean: {m:.3f} eps : {eps:.3f} last_x_position : {last_x_position:.3f}')
 
 
