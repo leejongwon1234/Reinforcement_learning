@@ -1,23 +1,14 @@
-#강화학습 - moving cartpole
+ # 강화학습 - moving cartpole
 ----------------------------------------------------
-*목차
+
 > ### 1. 사고과정과 아이디어
-
 > ### 2. 1번 : model 2개를 통한 moving_cartpole 구현
-
 > ### 3. 2번 : 특정 state에 큰 보상을 주어 moving_cartpole 구현
-
 > ### 4. 3번 : 특정 position 범위에 대해 보상을 주어 moving_cartpole 구현
-
 > ### 5. 4번 : model은 모든 경우에 대해 쓰러지지 않도록 학습하고, 환경을 조작하여 moving_cartpole 구현
-
 > ### 6. 5번 : state의 각 변수마다 함수를 만들어 곱하는 reward를 이용하여 moving_cartpole 구현
-
 > ### 7. 시행착오, 해결 방법, 경험 공유
-
 #
-#
-
 ## 1. 사고과정과 아이디어
 #
 
@@ -38,14 +29,14 @@
 
    >저장하는 경우
    ```python
-   if i%2 == 0:
+            if i%2 == 0:
                 memory1.append((state, action, reward, next_state, done))
             else:
                 memory2.append((state, action, reward, next_state, done))
    ```
    >학습하는 경우
    ```python
-   if i > 80:
+        if i > 80:
             if i%2 == 0:
                 minibatch = random.sample(memory1, minibatch_size)
             else:
@@ -53,7 +44,7 @@
    ```
    - 좌우로 이동할 때 마다 score를 측정하여 score>=6이상이고, 이전까지의 score들 중 max score와 같거나 크면 가중치를 저장한다. = episode가 진행되는 도중에 목표에 도달 했지만, episode가 끝났을때 오히려 목적에 맞게 학습되지 않는 경우를 방지함.
    ```python
-   if score >= max_score:
+        if score >= max_score:
             max_score = score
             #가중치 저장
             if score >= 6:
@@ -74,70 +65,163 @@
    4. model은 어떠한 상황에도 완벽히 서 있는 경우만 학습하고, inference단계에서 velocity나 angular_velocity를 조작하여 왕복운동을 하게 만든다.
 
    5. position,velocity,angle,angular_velocity를 이용한 함수를 만들어 곱하는 보상 구조를 구현한다.
+#
+## 2. 1번 : model 2개를 통한 moving_cartpole 구현
+#
+```진짜 무조건 성공 시킬 수 있을 것 같은데 시간이 없어서 시도도 못해봤습니다. ```
+#
+## 3. 2번 : 특정 state에 큰 보상을 주어 moving_cartpole 구현
+#
+ - 보상 코드
+```python
+#보상 함수
+def reward_function(next_state): #state 1x4
+    position = next_state[0][0]
+    velocity = next_state[0][1]
+    angle = next_state[0][2]
+    angular_velocity = next_state[0][3]
 
+    if abs(position) <0.2 and 0.08<abs(angle)<0.15 and abs(angular_velocity)<2:
+        return 1000
+    elif abs(position) <0.4 and 0.08<abs(angle)<0.15 and abs(angular_velocity)<3:
+        return 500
+    else:
+        return 0.5
+```
+- 결과
+
+```실패 : 특정 state를 찾지 못하고 쓰러지지 않는 방향으로 학습한다.```
+![idea2_result](https://github.com/leejongwon1234/Reinforcement_learning/assets/123047859/c02cbd46-4fad-4839-a4b9-f3ad14dc5bc8)
+```세부 조건을 조금 변경시키면 성공할 것 같지만.. 시간이 없었다.```
+#
+## 4. 3번 : 특정 position 범위에 대해 보상을 주어 moving_cartpole 구현
+#
+ - 보상 코드
+```python
+#보상 함수
+def reward_function(next_state): #state 1x4
+    position = next_state[0][0]
+    velocity = next_state[0][1]
+    angle = next_state[0][2]
+    angular_velocity = next_state[0][3]
+
+    if position <0.5 and velocity>0 and angle>0.05:
+        if abs(angular_velocity)<0.5:
+            return velocity*angle*200
+        elif abs(angular_velocity)<1.5:
+            return velocity*angle*100
+        else:
+            return velocity*angle*50
+    elif position >-0.5 and velocity<0 and angle<-0.05:
+        if abs(angular_velocity)<0.5:
+            return velocity*angle*200
+        elif abs(angular_velocity)<1.5:
+            return velocity*angle*100
+        else:
+            return velocity*angle*50
+    else:
+        return 0.05
+```
+ - inference 결과
+#
+![idea3_result](https://github.com/leejongwon1234/Reinforcement_learning/assets/123047859/2065b51b-4bdd-4497-8cdd-7381d2afa830)
+# 
+## 5. 4번 : model은 모든 경우에 대해 쓰러지지 않도록 학습하고, 환경을 조작하여 moving_cartpole 구현
+#
+ - 코드
+```python
+    #초기state 설정
+    env.reset()
+    env.state[1] = np.random.uniform(-1, 1)
+    env.state[2] = np.random.uniform(-0.08, 0.08)
+    env.state[3] = np.random.uniform(-0.5, 0.5)
+    state = env.state
+    #많은 초깃값에 대해 흔들림 없이 쓰러지지 않는 경우를 학습한다.
+```
+- 결과
+
+```실패 : render_mode = 'human' 상태에서는 episode가 진행되는 동안 state값을 변경할 수 없다.``` 
+#
+## 6. 5번 : state의 각 변수마다 함수를 만들어 곱하는 reward를 이용하여 moving_cartpole 구현
+#
+ - 보상 코드
+```python
+#보상 함수
+def position_function(position):
+    if abs(position) < 2:
+        return 1
+    else:
+        return (3-abs(position))
+    
+def velocity_angle_function(position,velocity,angle):
+    if position<1 and velocity>0 and angle>0.05:
+        return velocity*angle*100
+    elif position>-1 and velocity<0 and angle<-0.05:
+        return velocity*angle*100
+    else:
+        return 0.3
+    
+def angular_velocity_function(angular_velocity):
+    if abs(angular_velocity) < 0.5:
+        return 5
+    elif abs(angular_velocity) < 1:
+        return 3
+    elif abs(angular_velocity) < 1.5:
+        return 2
+    else:
+        return 1
+
+
+def reward_function(next_state): #state 1x4
+    position = next_state[0][0]
+    velocity = next_state[0][1]
+    angle = next_state[0][2]
+    angular_velocity = next_state[0][3]
+
+    return position_function(position)*velocity_angle_function(position,velocity,angle)*angular_velocity_function(angular_velocity)
+```
+- 결과
+![idea5_result](https://github.com/leejongwon1234/Reinforcement_learning/assets/123047859/d8d4f122-6947-4b04-97fa-15bae586300e)
 #
 
-## 2. 1번 : model 2개를 통한 moving_cartpole 구현
-<pre>
-</pre>
- - 구현 코드
-```python
-```
-- 테스트
-```python
-```
-- 테스트 결과
-<pre>
-</pre>
-## 3. g=5
-<pre>
-</pre>
- - 구현 코드
-```python
-```
+---------------
+### 번외 : 처음 짠 코드로 성공시킨 가중치를 저장해 뒀는데 그 코드위에 보상을 자꾸 바꾸다 보니 처음 짠 코드가 사라졌습니다. 그리고 어떻게 했는지 기억이 안나서 inference만 올립니다.
+![idea000_result](https://github.com/leejongwon1234/Reinforcement_learning/assets/123047859/2568fa64-defa-414a-a2c5-857df67f9bd1)
 
+#
+## 7. 시행착오, 해결 방법, 피드백, 경험 공유 등등
+#
 <pre>
-</pre>
+1. 학습하는 과정에서 성공하는 경우가 많고, 성공 이후 목표하는 방향으로 학습하지 않는 경우가 많았기 때문에, 성공했을 때의 가중치를 저장하는 것이 중요했던 것 같습니다.
 
-## 5.시행착오 및 해결 방법, 피드백
-<pre>
-</pre>
-### 1. 보상을 어떻게 처리 할 것인가?
-<pre>
-</pre>
->>이유는 알 수 없지만, reward를 임의로 조정하는 것 보다 환경에서 주어진 reward를 사용하는 것이 더 학습을 잘했다.
 
- - reward가 0.01보다 클때 reward+=1을 해주는 구조(0.01보다 큰 부분에서 불연속)로 변경해보았지만, 잘 학습하지 못했다.
- 
- - np.square(reward)*(-1)을 이용하여 reward의 절댓값이 클수록 더 큰 penalty를 주는 구조로 변경한 경우 학습을 잘 했지만, 수렴하는 데에 더 많은 episode를 필요로 했고, reward 구조를 변경할 이유가 없었다.
+2. 다른 문제들과는 다르게 episode의 양이 충분해야 했던 것 같습니다. 특히, 코드를 잘 짰어도 어떤 경우에는 성공하고 어떤 경우에는 실패하기도 하므로 자신의 코드에 성공할 거라는 믿음이 있을때 충분한 episode를 여러번 시도해봐야 했던 것 같습니다.
 
- - np.sqrt(reward)*(-2)를 이용하여 reward의 절댓값이 작을수록 급격하게 reward가 커지는 방향으로 변경하는 경우 학습을 잘 했지만, 수렴하는 데에 더 많은 episode를 필요로 했고, reward구조를 변경할 이유가 없었다.
-<pre>
-</pre>
-### 2.가중치를 언제 저장할 것인가?
-<pre>
-</pre>
->>last_x_postion이 0.999보다 큰 경우 성공이라고 생각하여 이 때의 가중치를 저장하고, 업데이트 하는 방향으로 구현하여 overfitting이나 원인불명의 학습실패를 방지하려 했지만, 결과론적으로 수렴이 되기 때문에 학습이 마무리 된 뒤, 가중치를 저장해도 문제가 없었을 것이다.
-<pre>
-</pre>
-### 3.저장한 가중치를 어떻게 로드 하여 테스트 하는가?
-<pre>
-</pre>
->>단순히 모델을 구현하여 가중치를 로드 하니 계속 오류가 발생하여 고생했다. 이리저리 찾아보다가 모델 전부를 구현하고, 모델을 호출하여 변수를 생성한 뒤에 로드를 해야 문제없이 로드가 되었다.
-```python
-model = DQN()
-model(np.zeros((1, 3)))  ### 모델 호출하여 변수 생성
 
-# 저장된 모델 로드
-model.load_weights('pendulum_g10.h5')
-```
-<pre>
-</pre>
-### 4.적절한 학습을 위해 코드를 어떤 구조로 구성해야할까?
-<pre>
-</pre>
->>g=1인 경우, 스윙이 필요없이 한쪽방향으로 힘을 가하여 막대를 세울 수 있기에 큰 고민이 필요없이 성공할 수 있지만, g가 5보다 커지는 경우 특정 상황에서 스윙이 필요하기 때문에 단순히 epsilon값이 줄어드는 방향으로 episode만 늘려서는 학습이 잘 되지 않았다. 
+3. reward를 부여할 때 음수(penalty)와 양수(reward)를 섞는 것은 좋지 않은 듯 합니다.
 
->>이를 위해 episode500인 학습을 3번 시도하는 방향으로 구조를 작성했고, 시도가 바뀔 때 마다 epsilon값을 reset(약간의 변형은 존재)하여 최적의 결과를 탐험하게 시도시켜 성공시켰다.
-<pre>
-</pre>
+예를 들어, 
+ 1. 쓰러진 경우에는 penalty-1을 부여하고 다른 조건인 경우에 reward(+)를 주었다. 
+ 2. 비슷한 상태 A와 a가 있다.
+ 3. 상태 A에서 왼쪽으로 힘을 주었더니 막대가 쓰러졌다.
+라고 가정해봅시다.
+
+이 data를 학습하게 되면 target은 state A일 때 [-1,0.44]가 될 것이고, 이에 가깝게 역전파를 통해 가중치가 학습될 것입니다. 그렇다면 행렬 가중치 연산으로 인해 state a인 경우에 [-0.11, 0.33] 정도의 Q 값을 가지게 될것이고, 오른쪽으로 힘을 주어야 하는 action을 취하게 될 것입니다. 
+즉, 비슷한 state라면 reward 구조를 어떻게 구성하는지는 중요치 않고, 쓰러지지 않는 방향으로의 action만 취하게 될것입니다.
+이렇다 보니 아마 reward에 양수와 음수를 섞어서 부여하게 되면 cart가 막대를 세우는 데에만 학습하는 양상을 띄는 것 같습니다.
+이는 이번 moving_cartpole의 목표를 방해하는 요소였습니다.
+
+
+4. 경험상 state 변수중 position,velocity 보다 angular_velocity값이 매우 핵심적인 요소였습니다.
+angular_velocity는 막대가 움직이는 각속도이므로 절댓값이 특정 값보단 작은 것이 moving_cartpole의 안정성에 중요한 요소였습니다. 따라서 보상을 부여할 때 agent가 적절한 angular_velocity를 찾을 수 있도록 넓은 범위를 부여하되, 절댓값이 특정값보다 커지면 보상을 매우 작게 주어야 학습이 잘 이루어 졌습니다.
+
+
+5.moving_cartpole은 결국 카트가 움직여야 하므로 가만히 막대를 세우는 행위는 잘못된 행위임을 인지해야 했습니다. 따라서 보상을 줄때 곱셈을 잘 이용하는 방향이 효과적이었습니다. 
+
+예를 들어, 속도와 각도가 클수록 더 큰 보상을 주고 싶어서 덧셈을 이용했다고 가정해봅시다.
+reward = position_function + velocity_function + angle_function
+이 경우 속도와 각도가 클수록 더 큰 보상을 받는 건 맞지만, 만약 속도와 각도를 0에 가깝게 만들어도 position_fucntion값을 받게 될것입니다. 즉, 탐험을 충분히 많이 하여 더 큰 보상을 받는 경우를 찾거나 예측할 수 있도록 해야 학습이 될 것입니다.
+
+하지만, 속도와 각도가 클수록 더 큰 보상을 주고 싶어서 곱셉을 이용했다고 가정해봅시다.
+reward = position_function*velocity_function*angle_function
+이 경우 속도와 각도가 클수록 더 큰 보상을 받을 뿐 아니라, 속도와 각도 중 어느 하나라도 0에 가까워지면 reward는 급격히 낮아집니다. 즉, 가만히 있는 행위는 넘어지는 것과 비슷할 정도로 판단 되게 되는 거죠. 이는 moving_cartpole 문제 해결에 큰 도움이 되었습니다. 
